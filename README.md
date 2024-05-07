@@ -5,6 +5,8 @@ KolmogorovArnoldNetworks.jl is a Julia library providing implementations of [Kol
 
 Please feel free to contribute!
 
+## TODO: Fix example.jl
+
 ## Installation (soon)
 
 You can install KolmogorovArnoldNetworks.jl using the Julia package manager. From the Julia REPL, type `]` to enter the package manager mode, then run:
