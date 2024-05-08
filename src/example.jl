@@ -1,69 +1,56 @@
-using .Kolmogorov
 using Flux
-using Flux: onehotbatch, onecold, crossentropy, DataLoader
-using MLDatasets: MNIST
+using .Kolmogorov
+using MLDatasets
+using Statistics: mean
 using Random
-using Flux: params 
 
-Random.seed!(1234)
+train_x, train_y = MLDatasets.MNIST.traindata(Float32)
+test_x, test_y = MLDatasets.MNIST.testdata(Float32)
 
-train_x, train_y = MNIST.traindata()
-test_x, test_y = MNIST.testdata()
+train_x ./= 255.0
+test_x ./= 255.0
 
-function preprocess(img)
-    img = Float32.(img) ./ 255.0  
-    return reshape(img, 28 * 28)  
+train_x = reshape(train_x, :, size(train_x, 3))
+test_x = reshape(test_x, :, size(test_x, 3))
+
+train_y = Flux.onehotbatch(train_y .+ 1, 1:10)
+test_y = Flux.onehotbatch(test_y .+ 1, 1:10)
+
+kan_model = Kolmogorov.KAN([784, 128, 64, 10]; grid_size=5, spline_order=3, scale_base=1.0, base_activation=sigmoid)
+
+function loss(x::AbstractArray{Float32, 2}, y::AbstractArray)
+    ŷ = kan_model(x; update_grid=false)  
+    return Flux.crossentropy(ŷ, y)
 end
 
-train_x = [preprocess(train_x[:, :, i]) for i in 1:size(train_x, 3)]
-test_x = [preprocess(test_x[:, :, i]) for i in 1:size(test_x, 3)]
+optimizer = Flux.Adam()
+epochs = 10
+batch_size = 128
 
-train_y = onehotbatch(train_y .+ 1, 1:10)
-test_y = onehotbatch(test_y .+ 1, 1:10)
-
-train_data = DataLoader((train_x, train_y), batchsize=64, shuffle=true)
-
-model = KAN([28 * 28, 128, 64, 10]; grid_size=5, spline_order=3)
-
-loss_fn(x, y) = crossentropy(model(x), y)
-optimizer = Flux.ADAM()
-
-num_epochs = 10
-train_data = DataLoader((train_x, train_y), batchsize=64, shuffle=true)
-
-for batch in train_data
-    println(typeof(batch))  
-    x, y = batch
-    println(size(x), size(y)) 
-end
-
-# this doesnt work yet
-for epoch in 1:num_epochs
-    total_loss = 0.0
-    num_batches = 0
-
-    for (x, y) in train_data  
-        loss_val = Flux.Optimise.update!(optimizer, params(model)) do
-            loss_fn(x, y)
-        end
-        total_loss += loss_val
-        num_batches += 1
+for epoch in 1:epochs
+    Random.seed!(epoch)
+    shuffled_indices = randperm(size(train_x, 2))
+    shuffled_train_x = train_x[:, shuffled_indices]
+    shuffled_train_y = train_y[:, shuffled_indices]
+    
+    for i in 1:batch_size:size(train_x, 2)
+        batch_indices = i:min(i + batch_size - 1, size(train_x, 2))
+        batch_x = shuffled_train_x[:, batch_indices]
+        batch_y = shuffled_train_y[:, batch_indices]
+        
+        Flux.train!(loss, Flux.params(kan_model), [(batch_x, batch_y)], optimizer)
     end
 
-    train_loss = total_loss / num_batches
-    println("Epoch $epoch: Training loss = $train_loss")
+    train_loss = loss(train_x, train_y)
+    train_accuracy = mean(Flux.onecold(kan_model(train_x), 1:10) .== Flux.onecold(train_y, 1:10))
+    println("Epoch $epoch: Training loss = $train_loss, Accuracy = $train_accuracy")
 end
 
+test_predictions = Flux.onecold(kan_model(test_x), 1:10)
+test_accuracy = mean(test_predictions .== Flux.onehotargmax(test_y, 1:10))
+println("Test Accuracy: $test_accuracy")
 
-function accuracy(model, data)
-    correct = 0
-    total = 0
-    for (x, y) in data
-        total += size(x, 2)
-        correct += sum(onecold(model(x)) .== onecold(y))
-    end
-    return correct / total
-end
 
-test_data = DataLoader((test_x, test_y), batchsize=64)
-println("Test accuracy: ", accuracy(model, test_data))
+test_predictions = Flux.onecold(kan_model(test_x), 1:10)
+test_accuracy = mean(test_predictions .== Flux.onecold(test_y, 1:10))
+println("Test Accuracy: $test_accuracy")

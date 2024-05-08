@@ -6,11 +6,25 @@ module Kolmogorov
     using LinearAlgebra
 
     function b_splines(x, grid, spline_order)
-        bases = (x .>= grid[:, 1:end-1]) .& (x .< grid[:, 2:end])
+        println("b_splines - x shape: ", size(x), ", grid shape: ", size(grid))
+
+        grid_expanded = reshape(grid, size(grid, 1), 1, size(grid, 2))
+        x_expanded = reshape(x, size(x, 1), size(x, 2), 1)
+
+        bases = (x_expanded .>= grid_expanded[:, :, 1:end-1]) .& (x_expanded .< grid_expanded[:, :, 2:end])
         for k in 1:spline_order
-            bases = (x .- grid[:, 1:end-k-1]) ./ (grid[:, k+1:end-1] .- grid[:, 1:end-k-1]) .* bases[:, 1:end-1] +
-                    (grid[:, k+2:end] .- x) ./ (grid[:, k+2:end] .- grid[:, 2:end-k]) .* bases[:, 2:end]
+            left_num = x_expanded .- grid_expanded[:, :, 1:end-k-1]
+            left_den = grid_expanded[:, :, k+1:end-1] .- grid_expanded[:, :, 1:end-k-1]
+            right_num = grid_expanded[:, :, k+2:end] .- x_expanded
+            right_den = grid_expanded[:, :, k+2:end] .- grid_expanded[:, :, 2:end-k]
+
+            left_ratio = left_num ./ left_den
+            right_ratio = right_num ./ right_den
+
+            bases = left_ratio .* bases[:, :, 1:end-1] + right_ratio .* bases[:, :, 2:end]
         end
+
+        println("b_splines - bases shape: ", size(bases))
         return bases
     end
 
@@ -49,10 +63,26 @@ module Kolmogorov
     end
 
     function (layer::KANLinear)(x)
-        base_output = layer.base_activation(layer.base_weight * x')
+        println("KANLinear forward - input x shape: ", size(x))
+
+        base_output = layer.base_activation(layer.base_weight * x)
+
         bases = b_splines(x, layer.grid, layer.spline_order)
-        spline_output = (reshape(bases, size(bases, 1), -1) * reshape(layer.spline_weight .* coalesce(layer.spline_scaler, 1.0), size(layer.spline_weight, 1), -1))'
-        return base_output + spline_output
+
+        features = size(bases, 1)
+        batch_size = size(bases, 2)
+        num_splines = size(bases, 3)
+
+        bases_reshaped = permutedims(bases, (2, 1, 3))
+        bases_flattened = reshape(bases_reshaped, batch_size, features * num_splines)
+
+        spline_weight_flattened = reshape(layer.spline_weight .* coalesce(layer.spline_scaler, 1.0), size(layer.spline_weight, 1), features * num_splines)
+
+        spline_output = spline_weight_flattened * bases_flattened'
+
+        println("KANLinear forward - base_output shape: ", size(base_output), ", spline_output shape: ", size(spline_output))
+
+        return base_output + spline_output'
     end
 
     struct KAN
@@ -65,12 +95,12 @@ module Kolmogorov
     end
 
     function update_grid!(layer::KANLinear, x; margin=0.01)
-        batch = size(x, 1)
+        batch = size(x, 2)
         splines = b_splines(x, layer.grid, layer.spline_order)
         orig_coeff = permutedims(layer.spline_weight .* coalesce(layer.spline_scaler, 1.0), (2, 3, 1))
         unreduced_spline_output = permutedims(splines * orig_coeff, (2, 1, 3))
 
-        x_sorted = sortslices(x, dims=1)
+        x_sorted = sortslices(x, dims=2)
         grid_adaptive = x_sorted[round.(Int64, LinRange(1, batch, layer.grid_size + 1)), :]
 
         uniform_step = (maximum(x_sorted) - minimum(x_sorted) + 2 * margin) / layer.grid_size
@@ -107,6 +137,7 @@ module Kolmogorov
             end
             x = layer(x)
         end
+        println("KAN forward - final output shape: ", size(x))
         return x
     end
 end
