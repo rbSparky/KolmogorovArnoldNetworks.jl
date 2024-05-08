@@ -6,6 +6,7 @@ KolmogorovArnoldNetworks.jl is a Julia library providing implementations of [Kol
 Please feel free to contribute!
 
 ## TODO: Fix example.jl
+Once that is working, this can be made an official package
 
 ## Installation (soon)
 
