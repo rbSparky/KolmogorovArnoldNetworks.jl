@@ -1,4 +1,4 @@
-module Kolmogorov
+module KAN
     export KANLinear, KAN, update_grid!, regularization_loss
 
     using Flux: sigmoid
@@ -85,7 +85,7 @@ module Kolmogorov
         return base_output + spline_output'
     end
 
-    struct KAN
+    struct KAN #change var name
         layers::Vector{KANLinear}
     end
 

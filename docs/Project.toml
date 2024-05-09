@@ -1,0 +1,3 @@
+[deps]
+Documenter = "e30172f5-a6a5-5a46-863b-614d45cd2de4"
+KAN = "6ba09c7e-4323-4ae3-9984-9b7c16f9a35a"

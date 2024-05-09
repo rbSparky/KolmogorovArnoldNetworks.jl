@@ -1,5 +1,5 @@
 using Flux
-using .Kolmogorov
+using .KAN
 using MLDatasets
 using Statistics: mean
 using Random
