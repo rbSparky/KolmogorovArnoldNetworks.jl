@@ -1,5 +1,6 @@
 # KolmogorovArnoldNetworks.jl
 # This is in very early stages
+## If you are interested in becoming a maintainer, please open a PR!
 
 KolmogorovArnoldNetworks.jl is a Julia library providing implementations of [Kolmogorov-Arnold neural networks](https://arxiv.org/abs/2404.19756). Implementation inspired by [Efficient KAN](https://github.com/Blealtan/efficient-kan).
 
