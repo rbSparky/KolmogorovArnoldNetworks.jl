@@ -1,4 +1,4 @@
-module KAN
+module KAN2
     export KANLinear, KAN, update_grid!, regularization_loss
     using Flux
     using Flux: sigmoid
@@ -58,7 +58,7 @@ module KAN
         grid = reshape(collect(repeat(grid, in_features)), in_features, :)
 
         base_weight = randn(out_features, in_features) * sqrt(5) * scale_base
-        spline_weight = randn(out_features, in_features, grid_size + spline_order)
+        spline_weight = randn(out_features, in_features, grid_size + spline_order) * 0.1 
         spline_scaler = enable_standalone_scale_spline ? randn(out_features, in_features) * sqrt(5) * scale_spline : nothing
 
         KANLinear(base_weight, spline_weight, spline_scaler, grid, grid_size, spline_order, base_activation, scale_base, scale_spline, scale_noise, grid_eps, enable_standalone_scale_spline)
@@ -84,7 +84,11 @@ module KAN
 
         println("KANLinear forward - base_output shape: ", size(base_output), ", spline_output shape: ", size(spline_output))
 
-        return base_output + spline_output'
+        #spline_output =  Flux.clipnorm(spline_output, 1.0) 
+
+        println("KANLinear forward - base_output shape: ", size(base_output), ", spline_output shape: ", size(spline_output))
+
+        return base_output' + spline_output' 
     end
 
     struct KAN #change var name
@@ -140,6 +144,7 @@ module KAN
                 update_grid!(layer, x)
             end
             x = layer(x)
+            x=x'
         end
         println("KAN forward - final output shape: ", size(x))
         return x

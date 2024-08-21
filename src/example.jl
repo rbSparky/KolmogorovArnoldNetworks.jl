@@ -1,5 +1,5 @@
 using Flux
-using .KAN
+using .KAN2
 using MLDatasets
 using Statistics: mean
 using Random
@@ -16,7 +16,7 @@ test_x = reshape(test_x, :, size(test_x, 3))
 train_y = Flux.onehotbatch(train_y .+ 1, 1:10)
 test_y = Flux.onehotbatch(test_y .+ 1, 1:10)
 
-kan_model = Kolmogorov.KAN([784, 128, 64, 10]; grid_size=5, spline_order=3, scale_base=1.0, base_activation=sigmoid)
+kan_model = KAN2.KAN([784, 128, 64, 10]; grid_size=5, spline_order=3, scale_base=1.0, base_activation=sigmoid)
 
 function loss(x::AbstractArray{Float32, 2}, y::AbstractArray)
     ŷ = kan_model(x; update_grid=false)  
@@ -32,13 +32,18 @@ for epoch in 1:epochs
     shuffled_indices = randperm(size(train_x, 2))
     shuffled_train_x = train_x[:, shuffled_indices]
     shuffled_train_y = train_y[:, shuffled_indices]
-    
+
     for i in 1:batch_size:size(train_x, 2)
         batch_indices = i:min(i + batch_size - 1, size(train_x, 2))
         batch_x = shuffled_train_x[:, batch_indices]
         batch_y = shuffled_train_y[:, batch_indices]
-        
+    
         Flux.train!(loss, Flux.params(kan_model), [(batch_x, batch_y)], optimizer)
+
+        grads = gradient(params(kan_model)) do
+            loss(batch_x, batch_y)
+        end
+        println("Gradient norm: ", norm(grads)) 
     end
 
     train_loss = loss(train_x, train_y)
