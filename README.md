@@ -7,7 +7,26 @@ KolmogorovArnoldNetworks.jl is a Julia library providing implementations of [Kol
 Please feel free to contribute!
 
 ## TODO: Fix example.jl
-Once that is working, this can be made an official package
+Current error:
+```
+KANLinear forward - input x shape: (784, 128)
+b_splines - x shape: (784, 128), grid shape: (784, 12)
+b_splines - bases shape: (784, 128, 8)
+KANLinear forward - base_output shape: (128, 128), spline_output shape: (128, 128)
+KANLinear forward - base_output shape: (128, 128), spline_output shape: (128, 128)
+KANLinear forward - input x shape: (128, 128)
+b_splines - x shape: (128, 128), grid shape: (128, 12)
+b_splines - bases shape: (128, 128, 8)
+KANLinear forward - base_output shape: (64, 128), spline_output shape: (64, 128)
+KANLinear forward - base_output shape: (64, 128), spline_output shape: (64, 128)
+KANLinear forward - input x shape: (64, 128)
+b_splines - x shape: (64, 128), grid shape: (64, 12)
+b_splines - bases shape: (64, 128, 8)
+KANLinear forward - base_output shape: (10, 128), spline_output shape: (10, 128)
+KANLinear forward - base_output shape: (10, 128), spline_output shape: (10, 128)
+KAN forward - final output shape: (10, 128)
+ERROR: DomainError with Loss is NaN on data item 1, stopping training:
+```
 
 ## Installation (soon)
 
